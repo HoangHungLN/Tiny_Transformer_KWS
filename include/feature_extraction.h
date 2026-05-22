@@ -4,6 +4,7 @@
 #include "global.h"
 #include <Arduino.h>
 #include "esp_dsp.h"
+#include <cmath>
 
 // --- ÁNH XẠ THAM SỐ TỪ PYTHON SCRIPT ---
 #define SAMPLE_RATE 16000
