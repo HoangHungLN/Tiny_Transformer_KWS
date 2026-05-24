@@ -5,7 +5,7 @@ extern int16_t g_audio_buffer[];
 void Task_FeatureExtraction(void *pvParameters) {
     // Ép kiểu ép bộ nhớ: Cấp phát mảng 2 chiều dạng static để nó nằm ở bộ nhớ tĩnh,
     // tuyệt đối không dùng mảng cục bộ thông thường để tránh tràn RAM của Task.
-    static float mfcc_features[NUM_FRAMES][NUM_MFCC];
+    static float mel_features[TARGET_TIME_STEPS][NUM_FILTERS];
 
     while (1) {
         // 1. Khóa Task lại, chờ tín hiệu từ push_to_talk hoặc micro
@@ -13,22 +13,20 @@ void Task_FeatureExtraction(void *pvParameters) {
         if (xSemaphoreTake(xBinarySemaphoreMic, portMAX_DELAY) == pdTRUE) {
             
             // 2. Chạy giải thuật DSP (Chuyển 16000 mẫu int16 thành ma trận float 98x13)
-            calculate_mfcc(g_audio_buffer, (float*)mfcc_features);
+            calculate_mel_spectrogram(g_audio_buffer, (float*)mel_features);
 
-            // 3. Gửi ma trận MFCC qua hàng đợi cho tinyKWSTask
-            if (xQueueSend(featureQueue, &mfcc_features, pdMS_TO_TICKS(10)) != pdPASS) {
-                Serial.println("[DSP ERROR] Hàng đợi MFCC bị đầy, luồng AI xử lý không kịp!");
+            // 3. Gửi ma trận Mel spectrogram qua hàng đợi cho tinyKWSTask
+            if (xQueueSend(featureQueue, &mel_features, pdMS_TO_TICKS(10)) != pdPASS) {
+                Serial.println("[DSP ERROR] Hàng đợi Mel spectrogram bị đầy, luồng AI xử lý không kịp!");
             }
         }
     }
 }
 
-void calculate_mfcc(const int16_t* raw_audio, float* mfcc_output) {
+void calculate_mel_spectrogram(const int16_t* raw_audio, float* mel_output) {
     static bool dsp_initialized = false;
     static float fft_buffer[NFFT * 2]; 
     static float pow_frames[NFFT / 2 + 1];
-    static float dct_input[NUM_FILTERS];
-    static float dct_output[NUM_FILTERS];
 
     if (!dsp_initialized) {
         esp_err_t ret = dsps_fft2r_init_fc32(NULL, CONFIG_DSP_MAX_FFT_SIZE);
@@ -76,39 +74,18 @@ void calculate_mfcc(const int16_t* raw_audio, float* mfcc_output) {
             if (mel_energy < 1e-7f) {
                 mel_energy = 1e-7f;
             }
-            dct_input[m] = 20.0f * std::log10f(mel_energy);
-        }
-
-        // Discrete Cosine Transform (DCT) tiêu chuẩn của ESP-DSP
-        dsps_dct_f32(dct_input, dct_output, NUM_FILTERS);
-
-        float max_val = 1e-8f;
-        float mean_val = 0.0f;
-        float frame_mfccs[NUM_MFCC];
-
-        // Trích xuất hệ số từ 1 đến 13 và nhân bù tỷ lệ chuẩn hóa norm='ortho'
-        for (int i = 0; i < NUM_MFCC; i++) {
-            frame_mfccs[i] = dct_output[i + 1] * dct_scaling_factors[i];
-            mean_val += frame_mfccs[i];
-        }
-        mean_val /= (float)NUM_MFCC;
-
-        // Normalization / Scaling đưa khoảng giá trị về [-1, 1] cho mỗi Frame
-        for (int i = 0; i < NUM_MFCC; i++) {
-            frame_mfccs[i] -= mean_val;
-            if (std::abs(frame_mfccs[i]) > max_val) {
-                max_val = std::abs(frame_mfccs[i]);
+            float log_mel_db = 20.0f * std::log10f(mel_energy);
+            if (log_mel_db < MEL_MINDB) {
+                log_mel_db = MEL_MINDB;
+            } else if (log_mel_db > MEL_MAXDB) {
+                log_mel_db = MEL_MAXDB;
             }
+            mel_output[f * NUM_FILTERS + m] = (log_mel_db - MEL_MINDB) / (MEL_MAXDB - MEL_MINDB);
         }
-
-        for (int i = 0; i < NUM_MFCC; i++) {
-            mfcc_output[f * NUM_MFCC + i] = frame_mfccs[i] / max_val;
-        }
-        // padding 0 
-        for (int f = NUM_FRAMES; f < TARGET_TIME_STEPS; f++) {
-            for (int i = 0; i < NUM_MFCC; i++) {
-                mfcc_output[f * NUM_MFCC + i] = 0.0f;
-            }
+    }
+    for (int f = NUM_FRAMES; f < TARGET_TIME_STEPS; f++) {
+        for (int i = 0; i < NUM_FILTERS; i++) {
+            mel_output[f * NUM_FILTERS + i] = 0.0f;
         }
     }
 }
