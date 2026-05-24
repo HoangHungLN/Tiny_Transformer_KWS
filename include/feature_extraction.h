@@ -7,7 +7,6 @@
 #include <cmath>
 #include "feature_extraction_data.h"
 
-// --- ÁNH XẠ THAM SỐ TỪ PYTHON SCRIPT ---
 #define SAMPLE_RATE 16000
 #define FRAME_LENGTH   400   // Tương đương 0.025s * 16000 (frame_size)
 #define FRAME_STEP  160   // Tương đương 0.010s * 16000 (frame_stride)

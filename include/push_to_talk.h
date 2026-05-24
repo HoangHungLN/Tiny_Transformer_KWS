@@ -3,4 +3,8 @@
 
 #include "global.h"
 
+#define BOOT_BUTTON_PIN 0
+
+void Task_PushToTalk(void *pvParameters);
+
 #endif

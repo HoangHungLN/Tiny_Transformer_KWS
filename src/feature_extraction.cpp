@@ -1,23 +1,21 @@
 #include "feature_extraction.h"
 
-extern int16_t g_audio_buffer[];
-
 void Task_FeatureExtraction(void *pvParameters) {
     // Ép kiểu ép bộ nhớ: Cấp phát mảng 2 chiều dạng static để nó nằm ở bộ nhớ tĩnh,
-    // tuyệt đối không dùng mảng cục bộ thông thường để tránh tràn RAM của Task.
+    // không dùng mảng cục bộ thông thường để tránh tràn RAM của Task.
     static float mel_features[TARGET_TIME_STEPS][NUM_FILTERS];
 
     while (1) {
-        // 1. Khóa Task lại, chờ tín hiệu từ push_to_talk hoặc micro
+        // 1. Khóa Task lại, chờ tín hiệu từ push_to_talk
         // portMAX_DELAY giúp CPU nghỉ ngơi 100% khi không có nút bấm
         if (xSemaphoreTake(xBinarySemaphoreMic, portMAX_DELAY) == pdTRUE) {
             
-            // 2. Chạy giải thuật DSP (Chuyển 16000 mẫu int16 thành ma trận float 98x13)
+            // 2. Chạy giải thuật DSP
             calculate_mel_spectrogram(g_audio_buffer, (float*)mel_features);
 
             // 3. Gửi ma trận Mel spectrogram qua hàng đợi cho tinyKWSTask
             if (xQueueSend(featureQueue, &mel_features, pdMS_TO_TICKS(10)) != pdPASS) {
-                Serial.println("[DSP ERROR] Hàng đợi Mel spectrogram bị đầy, luồng AI xử lý không kịp!");
+                Serial.println("[DSP ERROR] Hàng đợi Mel spectrogram bị đầy");
             }
         }
     }
@@ -25,18 +23,13 @@ void Task_FeatureExtraction(void *pvParameters) {
 
 void calculate_mel_spectrogram(const int16_t* raw_audio, float* mel_output) {
     static bool dsp_initialized = false;
-    static float fft_buffer[NFFT * 2]; 
+    static float fft_buffer[NFFT * 2];
     static float pow_frames[NFFT / 2 + 1];
 
     if (!dsp_initialized) {
         esp_err_t ret = dsps_fft2r_init_fc32(NULL, CONFIG_DSP_MAX_FFT_SIZE);
-        if (ret != ESP_OK) {
-            Serial.println("[DSP ERROR] Khởi tạo bộ toán rfft thất bại!");
-        }
         dsp_initialized = true;
     }
-
-    int16_t prev_sample = (NUM_FRAMES > 0) ? raw_audio[0] : 0; 
 
     for (int f = 0; f < NUM_FRAMES; f++) {
         int start_sample = f * FRAME_STEP;
@@ -45,8 +38,10 @@ void calculate_mel_spectrogram(const int16_t* raw_audio, float* mel_output) {
         for (int i = 0; i < NFFT; i++) {
             if (i < FRAME_LENGTH) {
                 int16_t current_sample = raw_audio[start_sample + i];
-                float emphasized = (float)current_sample - 0.97f * (float)prev_sample;
-                prev_sample = current_sample;
+                // Lấy đúng mẫu liền trước trong mảng âm thanh gốc 1D
+                int16_t previous_sample = (start_sample + i > 0) ? raw_audio[start_sample + i - 1] : raw_audio[0];
+                float emphasized = (float)current_sample - 0.97f * (float)previous_sample;
+                
                 fft_buffer[i * 2] = emphasized * hamming_window[i];
                 fft_buffer[i * 2 + 1] = 0.0f;
             } else {
@@ -74,7 +69,7 @@ void calculate_mel_spectrogram(const int16_t* raw_audio, float* mel_output) {
             if (mel_energy < 1e-7f) {
                 mel_energy = 1e-7f;
             }
-            float log_mel_db = 20.0f * std::log10f(mel_energy);
+            float log_mel_db = 20.0f * log10f(mel_energy);
             if (log_mel_db < MEL_MINDB) {
                 log_mel_db = MEL_MINDB;
             } else if (log_mel_db > MEL_MAXDB) {
