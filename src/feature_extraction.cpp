@@ -70,12 +70,8 @@ void calculate_mel_spectrogram(const int16_t* raw_audio, float* mel_output) {
                 mel_energy = 1e-7f;
             }
             float log_mel_db = 20.0f * log10f(mel_energy);
-            if (log_mel_db < MEL_MINDB) {
-                log_mel_db = MEL_MINDB;
-            } else if (log_mel_db > MEL_MAXDB) {
-                log_mel_db = MEL_MAXDB;
-            }
-            mel_output[f * NUM_FILTERS + m] = (log_mel_db - MEL_MINDB) / (MEL_MAXDB - MEL_MINDB);
+
+            mel_output[f * NUM_FILTERS + m] = (log_mel_db - global_mean[m]) / (global_std[m] + 1e-8f);
         }
     }
     for (int f = NUM_FRAMES; f < TARGET_TIME_STEPS; f++) {

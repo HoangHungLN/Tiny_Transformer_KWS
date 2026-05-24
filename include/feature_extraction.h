@@ -12,8 +12,6 @@
 #define FRAME_STEP  160   // Tương đương 0.010s * 16000 (frame_stride)
 #define NFFT        512
 #define NUM_FILTERS 40    // nfilt
-#define MEL_MINDB   -70.0f
-#define MEL_MAXDB   140.0f
 
 // Tính toán số frame: ceil((16000 - 400) / 160) = 98 frames (cho 1 giây audio)
 // Ma trận đầu ra sẽ có kích thước:
