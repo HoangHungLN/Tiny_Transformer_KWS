@@ -104,5 +104,11 @@ void calculate_mfcc(const int16_t* raw_audio, float* mfcc_output) {
         for (int i = 0; i < NUM_MFCC; i++) {
             mfcc_output[f * NUM_MFCC + i] = frame_mfccs[i] / max_val;
         }
+        // padding 0 
+        for (int f = NUM_FRAMES; f < TARGET_TIME_STEPS; f++) {
+            for (int i = 0; i < NUM_MFCC; i++) {
+                mfcc_output[f * NUM_MFCC + i] = 0.0f;
+            }
+        }
     }
 }

@@ -12,12 +12,13 @@
 #define FRAME_LENGTH   400   // Tương đương 0.025s * 16000 (frame_size)
 #define FRAME_STEP  160   // Tương đương 0.010s * 16000 (frame_stride)
 #define NFFT        512
-#define NUM_FILTERS 26    // nfilt
-#define NUM_MFCC    13    // num_ceps
+#define NUM_FILTERS 40    // nfilt
+#define NUM_MFCC    40    // num_ceps
 
 // Tính toán số frame: ceil((16000 - 400) / 160) = 98 frames (cho 1 giây audio)
 // Ma trận đầu ra sẽ có kích thước:
-#define NUM_FRAMES  98    
+#define NUM_FRAMES  98 
+#define TARGET_TIME_STEPS 100   
 #define TOTAL_FEATURES (NUM_FRAMES * NUM_MFCC) // Tổng cộng 1274 phần tử
 
 void Task_FeatureExtraction(void *pvParameters);
