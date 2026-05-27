@@ -12,6 +12,6 @@
 #include "tensorflow/lite/schema/schema_generated.h"
 
 void setupKWS();
-void tinyKWSTask(void *pvParameters);
+void Task_TinyKWS(void *pvParameters);
 
 #endif

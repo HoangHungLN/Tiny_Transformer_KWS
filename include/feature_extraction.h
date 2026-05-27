@@ -8,18 +8,17 @@
 #include "feature_extraction_data.h"
 
 #define SAMPLE_RATE 16000
-#define FRAME_LENGTH   400   // Tương đương 0.025s * 16000 (frame_size)
-#define FRAME_STEP  160   // Tương đương 0.010s * 16000 (frame_stride)
+#define FRAME_LENGTH   400   // Equivalent to 0.025s * 16000 (frame_size)
+#define FRAME_STEP  160   // Equivalent to 0.010s * 16000 (frame_stride)
 #define NFFT        512
-#define NUM_FILTERS 40    // nfilt
+#define NUM_FILTERS 32    // nfilt
 
-// Tính toán số frame: ceil((16000 - 400) / 160) = 98 frames (cho 1 giây audio)
-// Ma trận đầu ra sẽ có kích thước:
+// Calculate number of frames: ceil((16000 - 400) / 160) = 98 frames (for 1 second of audio)
+// Output matrix will have size:
 #define NUM_FRAMES  98 
 #define TARGET_TIME_STEPS 100   
-// #define TOTAL_FEATURES (NUM_FRAMES * NUM_FILTERS) // Tổng cộng 1274 phần tử
 
 void Task_FeatureExtraction(void *pvParameters);
-
 void calculate_mel_spectrogram(const int16_t* raw_audio, float* mel_output);
+
 #endif

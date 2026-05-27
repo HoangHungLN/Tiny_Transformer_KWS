@@ -4,8 +4,8 @@ void micro_init() {
     i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
         .sample_rate = 16000,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // INMP441 đọc chuẩn nhất ở 32bit
-        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,  // INMP441 mono (chân L/R nối GND)
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT, // INMP441 reads best at 32-bit
+        .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,  // INMP441 mono (L/R pin connected to GND)
         .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_STAND_I2S),
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
         .dma_buf_count = 8,
@@ -24,25 +24,25 @@ void micro_init() {
 
     i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
     i2s_set_pin(I2S_PORT, &pin_config);
-    Serial.println("[MICRO] I2S INMP441 khoi tao thanh cong.");
+    Serial.println("[MICRO] I2S INMP441 initialized successfully.");
 }
 
 void micro_record(int16_t *buffer, size_t num_samples) {
     size_t bytes_read;
     int32_t sample32 = 0;
 
-    Serial.println("[MICRO] Bat dau ghi am 1 giay...");
+    Serial.println("[MICRO] Started recording for 1 second...");
     
-    // Xóa rác trong DMA đệm trước khi ghi âm mới
+    // Clear garbage in DMA buffer before new recording
     i2s_zero_dma_buffer(I2S_PORT); 
     
     for (size_t i = 0; i < num_samples; i++) {
-        // Đọc từng mẫu 32-bit từ I2S
+        // Read each 32-bit sample from I2S
         i2s_read(I2S_PORT, &sample32, sizeof(int32_t), &bytes_read, portMAX_DELAY);
         
-        // Dịch phải 16 bit để lấy data 16-bit chuẩn từ mic INMP441
+        // Shift right 16 bits to get standard 16-bit data from INMP441 mic
         buffer[i] = (int16_t)(sample32 >> 16); 
     }
     
-    Serial.println("[MICRO] Hoan tat ghi am.");
+    Serial.println("[MICRO] Recording completed.");
 }
